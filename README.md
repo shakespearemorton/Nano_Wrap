@@ -7,7 +7,7 @@ This repository contains all the necessary code and supplementary information to
 If you use any part of this code or the supplementary materials in your research, please cite our paper:
 > Morton, W., Vácha, R., & Angioletti-Uberti, S. (2024). Valency of Ligand−Receptor Binding from Pair Potentials. Journal of Chemical Theory and Computation. https://doi.org/10.1021/acs.jctc.4c00112
 
-![Abstract Image](/Publication_Images/graphical_abs.pdf)
+![Abstract Image](/Publication_Images/graphical_abs.png)
 
 ## Content Description
 - **Code**: Contains the LAMMPS scripts for running molecular dynamics simulations of nano-sphere endocytosis. These scripts are configured based on the coarse-grained model detailed in our publication.
