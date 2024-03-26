@@ -1,5 +1,4 @@
 import numpy as np
-import datetime
 import random
 
 def writeMembrane(pos,receptor_f,boxx,boxy,boxz):
@@ -58,31 +57,27 @@ def writeMembrane(pos,receptor_f,boxx,boxy,boxz):
         g.close()
     return
 
-def writeParticle(core,tips,binding_f,binding_style,memb,filler=[]):
+def writeParticle(core,binding_f,binding_style,memb):
 
     with open( 'particle.txt', 'w' ) as g:
-        if len(tips) == 0:
-            star = core
-        else:
-            star = np.concatenate((core,tips))
-        box_max = np.max(star[:,2],axis=0)+10
+        box_max = np.max(core[:,2],axis=0)+10
         if binding_style == 'Even':
             receps = []
-            ops = list(range(len(star)))
-            while len(receps) < int(len(star)*binding_f):
+            ops = list(range(len(core)))
+            while len(receps) < int(len(core)*binding_f):
                 rch = random.choice(range(len(ops)))
                 receps.append(ops[rch])
                 ops.pop(rch)
         elif binding_style == 'Num':
             receps = []
-            ops = list(range(len(star)))
+            ops = list(range(len(core)))
             while len(receps) < int(binding_f):
                 rch = random.choice(range(len(ops)))
                 receps.append(ops[rch])
                 ops.pop(rch)
-        nParticles = len(star)
-        g.write("#NP 10*10*20\n#second line will be skipped\n\n" )
-        g.write( "{0:.0f}     atoms\n".format( nParticles+len(filler)) )
+        nParticles = len(core)
+        g.write("#NP on membrnane\n#second line will be skipped\n\n" )
+        g.write( "{0:.0f}     atoms\n".format( nParticles) )
         g.write( "0     bonds\n")
         g.write("0    angles\n")
         g.write("0  dihedrals\n" )
@@ -96,13 +91,6 @@ def writeParticle(core,tips,binding_f,binding_style,memb,filler=[]):
                 g.write( "{0:.0f} 1 4 0.0 {1:.3f} {2:.3f} {3:.3f} \n".format( t+1, i[ 0 ], i[ 1 ], i[ 2 ] ) )
             else:
                 g.write( "{0:.0f} 1 5 0.0 {1:.3f} {2:.3f} {3:.3f} \n".format( t+1, i[ 0 ], i[ 1 ], i[ 2 ] ) )
-            t+=1
-        
-        for i in tips:
-            if t in receps:
-                g.write( "{0:.0f} 1 6 0.0 {1:.3f} {2:.3f} {3:.3f} \n".format( t+1, i[ 0 ], i[ 1 ], i[ 2 ] ) )
-            else:
-                g.write( "{0:.0f} 1 7 0.0 {1:.3f} {2:.3f} {3:.3f} \n".format( t+1, i[ 0 ], i[ 1 ], i[ 2 ] ) )
             t+=1
         g.close()
     return
