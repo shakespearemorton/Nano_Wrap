@@ -19,5 +19,5 @@ core[:,0] += (memb[0,1]-memb[0,0])/2
 core[:,1] += (memb[1,1]-memb[1,0])/2
 
 # Write the necessary LAMMPS files
-writeParticle(core,[],binding_f,'Even',memb)
-tabs(wc[REPLACE],Epsilon)
+writeParticle(core,binding_f,'Even',memb)
+tabs(Wc,Epsilon)
