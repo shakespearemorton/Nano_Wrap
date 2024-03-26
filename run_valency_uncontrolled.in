@@ -1,0 +1,119 @@
+# LAMMPS input file
+# Unorganised Lipid Bilayer
+
+# ----- Variables -----
+
+variable K equal 30.0
+variable K2 equal 10.0
+variable R0 equal 1.5
+variable R1 equal 180
+variable r_random1 equal 1561
+variable r_random2 equal 8416
+variable r_random3 equal 9314
+variable r_damp equal 100
+variable step equal 10000
+variable image equal 10000
+variable dt equal 0.01
+
+# ----- Initialisation -----
+
+units lj
+boundary p p p
+atom_style full
+bond_style      hybrid fene
+angle_style     hybrid harmonic
+special_bonds   lj 0.0 1.0 1.0
+timestep ${dt}
+processors      * * 1 map xyz
+
+# ----- Atom Definition -----
+read_data membrane.txt
+read_data particle.txt add append
+group memb type 1 2 3
+group particle type 4 5 6 7
+group core type 4 5
+group tips type 6 7
+group ligand type 4 6
+group receptor type 3
+
+# ----- Force Fields -----
+
+bond_coeff 1 fene ${K} ${R0} 1.0 1.0
+angle_coeff 1 harmonic ${K2} ${R1}
+
+pair_style      hybrid table linear 600
+pair_modify     shift yes
+
+pair_coeff      1 1 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      2 2 table tabulated_potential.dat TAIL_TAIL #ATTRACTION
+pair_coeff	    3 3 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      4 4 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      5 5 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      6 6 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      7 7 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      1 2 table tabulated_potential.dat HEAD_TAIL #REPULSION
+pair_coeff      1 3 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      1 4 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      1 5 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      1 6 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      1 7 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff	    2 3 table tabulated_potential.dat HEAD_TAIL #REPULSION
+pair_coeff	    2 4 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff	    2 5 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      2 6 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      2 7 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      3 4 table tabulated_potential.dat PART_HEAD #ATTRACTION
+pair_coeff      3 5 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      3 6 table tabulated_potential.dat PART_HEAD #ATTRACTION
+pair_coeff      3 7 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      4 5 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      4 6 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      4 7 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      5 6 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      5 7 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      6 7 table tabulated_potential.dat ZERO_ZERO #NONE
+
+
+# ----- Processor setup
+
+comm_style tiled
+comm_modify mode single
+neighbor        1.2 bin # 1.2 best
+neigh_modify every 1 delay 10 # must be every 1
+balance 1.1 rcb
+
+# ----- Rigid Bodies ------
+
+neigh_modify exclude group particle particle
+fix		set particle rigid/nve molecule langevin 1.0 1.0 1000 ${r_random1}
+
+# ----- Computes ------
+
+compute en all pe
+compute cm memb com
+compute cp particle com
+compute in ligand group/group receptor
+compute mp particle msd com yes
+compute mm memb msd com yes
+compute ro particle erotate/rigid set
+
+# ----- Data Collection ------
+minimize   1.0e-4 1.0e-6 100 1000
+
+write_data  data.start
+dump 		1 all custom ${image} *.dump id type x y z
+dump        myDump all xtc ${image} file.xtc
+thermo      ${step}
+thermo_style custom step temp press pxx pyy pzz vol lx ly lz
+
+# ----- Run System -----
+
+reset_timestep 0
+velocity particle set 0 0 -0.3
+velocity    memb create 0.2 ${r_random2}
+fix         out all ave/time 100 5 10000 c_cm[*] c_cp[*] c_in c_mp[*] c_mm[*] c_ro c_en file temp.profile
+fix 		proce all balance 1000 1.1 rcb
+fix         thermostat memb langevin  1.0  1.0  1.0 ${r_random3}
+fix         barostat memb nph x 0 0 1000 y 0 0 1000 couple xy
+
+run 4000000
