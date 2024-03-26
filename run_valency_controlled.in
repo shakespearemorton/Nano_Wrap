@@ -1,0 +1,108 @@
+# LAMMPS input file
+# Unorganised Lipid Bilayer
+
+# ----- Variables -----
+
+variable K equal 30.0
+variable K2 equal 10.0
+variable R0 equal 1.5
+variable R1 equal 180
+variable r_random1 equal 1561
+variable r_random2 equal 8416
+variable r_random3 equal 9314
+variable r_damp equal 100
+variable step equal 10000
+variable image equal 10000
+variable dt equal 0.01
+
+# ----- Initialisation -----
+
+units lj
+boundary p p p
+atom_style full
+
+timestep ${dt}
+processors      * * 1 map xyz
+
+# ----- Atom Definition -----
+read_data membrane.txt extra/special/per/atom 1 extra/bond/per/atom 1
+read_data particle.txt add append extra/special/per/atom 1 extra/bond/per/atom 1
+group memb type 1 2 3
+group particle type 4 5
+group ligand type 4
+group receptor type 3
+
+# ----- Force Fields -----
+
+bond_style      hybrid fene morse
+angle_style     hybrid harmonic
+special_bonds   lj 0 1 1
+
+bond_coeff 1 fene ${K} ${R0} 1.0 1.0
+bond_coeff 2 morse 30 1 1
+angle_coeff 1 harmonic ${K2} ${R1}
+
+pair_style      hybrid table linear 600
+pair_modify     shift yes
+
+pair_coeff      1 1 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      2 2 table tabulated_potential.dat TAIL_TAIL #ATTRACTION
+pair_coeff	    3 3 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      4 4 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      5 5 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      1 2 table tabulated_potential.dat HEAD_TAIL #REPULSION
+pair_coeff      1 3 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      1 4 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      1 5 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff	    2 3 table tabulated_potential.dat HEAD_TAIL #REPULSION
+pair_coeff	    2 4 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff	    2 5 table tabulated_potential.dat ZERO_ZERO #NONE
+pair_coeff      3 4 table tabulated_potential.dat HEAD_HEAD #ATTRACTION
+pair_coeff      3 5 table tabulated_potential.dat HEAD_HEAD #REPULSION
+pair_coeff      4 5 table tabulated_potential.dat ZERO_ZERO #NONE
+
+# ----- Processor setup
+
+comm_style tiled
+comm_modify mode single
+comm_modify cutoff 5
+neighbor        1.2 bin # 1.2 best
+neigh_modify every 1 delay 10 # must be every 1
+balance 1.1 rcb
+
+# ----- Rigid Bodies ------
+
+neigh_modify exclude group particle particle
+fix		set particle rigid/nve molecule langevin 1.0 1.0 1000 ${r_random1}
+
+# ----- Computes ------
+
+compute en all pe
+compute cm memb com
+compute cp particle com
+compute in ligand group/group receptor
+compute mp particle msd com yes
+compute mm memb msd com yes
+compute ro particle erotate/rigid set
+compute bo all bond
+
+# ----- Data Collection ------
+minimize   1.0e-4 1.0e-6 100 1000
+
+dump 		1 all custom ${image} *.dump id type x y z
+thermo      ${step}
+thermo_style custom step temp press pxx pyy pzz vol lx ly lz
+
+# ----- Run System -----
+
+reset_timestep 0
+velocity particle set 0 0 -0.3
+velocity    memb create 0.2 ${r_random2}
+fix         out all ave/time 100 5 10000 c_cm[*] c_cp[*] c_in c_mp[*] c_mm[*] c_ro c_en c_bo[2] file temp.profile
+fix 		proce all balance 1000 1.1 rcb
+fix         thermostat memb langevin  1.0  1.0  1.0 ${r_random3}
+fix         barostat memb nph x 0 0 1000 y 0 0 1000 couple xy
+fix         make all bond/create 10 3 4 1.3 2 prob 0.5 7463 iparam 1 3 jparam 1 4
+fix         break all bond/break 10 2 4
+
+run 3000000
